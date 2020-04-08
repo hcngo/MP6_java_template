@@ -34,15 +34,14 @@ public class RandomSentenceSpout extends BaseRichSpout {
     /* ----------------------TODO-----------------------
     Task: randomly generate sentence from sentences string array
     ------------------------------------------------- */
-
-		// End
+    int randomNumber = _rand.nextInt(sentences.length);
+    _collector.emit(new Values(sentences[randomNumber]));
   }
 
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
     /* ----------------------TODO-----------------------
     Task: declare output fields
     ------------------------------------------------- */
-
-		// End
+    declarer.declare(new Fields("sentence"));
   }
 }
