@@ -15,6 +15,7 @@
 # limitations under the License.
 
 ---
+# https://programtalk.com/vs/apache-storm-test/storm-1.0.1/external/storm-redis/src/test/java/org/apache/storm/redis/topology/PersistentWordCount.java/
 
 # topology definition
 # name to be used when submitting
@@ -39,40 +40,68 @@ components:
       - "uiuc_cs498_mp6"
       - 0
 
-  # TODO
   # Task: implement the redis store mapper
+  - id: "storeMapper"
+    className: "edu.illinois.storm.WordCountStoreMapper"
+    constructorArgs:
+      - "partAWordCount"
   # src/main/java/edu/illinois/storm/WordCountStoreMapper.java
   # redis hash key for part A is "partAWordCount"
 
 # spout definitions
 spouts:
-  # TODO
   # Task: implement the random sentence spout
   # src/main/java/edu/illinois/storm/RandomSentenceSpout.java
+  - id: "sentence-spout"
+    className: "edu.illinois.storm.RandomSentenceSpout"
+    parallelism: 1
 
 # bolt definitions
 bolts:
-  # TODO
   # Task: implement the split sentences bolt
   # src/main/java/edu/illinois/storm/SplitSentenceBolt.java
+  - id: "split-sentence-bolt"
+    className: "edu.illinois.storm.SplitSentenceBolt"
+    parallelism: 1
 
-  # TODO
   # Task: implement the word count bolt
   # src/main/java/edu/illinois/storm/WordCountBolt.java
+  - id: "word-count-bolt"
+    className: "edu.illinois.storm.WordCountBolt"
+    parallelism: 1
 
-  # TODO
   # Task: initialize RedisStoreBolt using poolConfig and storeMapper
   # ClassName is "org.apache.storm.redis.bolt.RedisStoreBolt"
+  - id: "redis-store-bolt"
+    className: "org.apache.storm.redis.bolt.RedisStoreBolt"
+    parallelism: 1
+    constructorArgs:
+      - ref: "poolConfig"
+      - ref: "storeMapper"
 
 # stream definitions
 # stream definitions define connections between spouts and bolts.
 streams:
-  # TODO
   # Task: pipe output of sentences generating spout to split bolt
+  - name: "sentence-spout --> split-sentence-bolt"
+    from: "sentence-spout"
+    to: "split-sentence-bolt"
+    grouping:
+      type: SHUFFLE
 
-  # TODO
   # Task: pipe output of split bolt to word count bolt
   # Hint: choose the right grouping type to make problem easier
+  - name: "split-sentence-bolt --> word-count-bolt"
+    from: "split-sentence-bolt"
+    to: "word-count-bolt"
+    grouping:
+      type: FIELDS
+      args: ["word"]
 
-  # TODO
   # Task: pipe output of word count bolt to redis store bolt
+  - name: "word-count-bolt --> redis-store-bolt"
+    from: "word-count-bolt"
+    to: "redis-store-bolt"
+    grouping:
+      type: SHUFFLE
+
