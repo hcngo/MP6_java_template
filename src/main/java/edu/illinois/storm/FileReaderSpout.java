@@ -11,12 +11,14 @@ import org.apache.storm.topology.IRichSpout;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
+import org.apache.storm.utils.Utils;
 
 /** a spout that generate sentences from a file */
 public class FileReaderSpout implements IRichSpout {
   private SpoutOutputCollector _collector;
   private TopologyContext _context;
   private String inputFile;
+  private BufferedReader reader;
 
   // Hint: Add necessary instance variables if needed
 
@@ -24,13 +26,12 @@ public class FileReaderSpout implements IRichSpout {
   public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
     this._context = context;
     this._collector = collector;
-
-    /* ----------------------TODO-----------------------
-    Task: initialize the file reader
-    ------------------------------------------------- */
-
-    // END
-
+    try {
+      System.out.println("The file is " + inputFile);
+      this.reader = new BufferedReader(new FileReader(inputFile));
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   // Set input file path
@@ -41,32 +42,47 @@ public class FileReaderSpout implements IRichSpout {
 
   @Override
   public void nextTuple() {
+    if (reader == null) {
+      return;
+    }
 
-    /* ----------------------TODO-----------------------
-    Task:
-    1. read the next line and emit a tuple for it
-    2. don't forget to add a small sleep when the file is entirely read to prevent a busy-loop
-    ------------------------------------------------- */
-    // END
+    boolean stillRead = true;
+    while (stillRead) {
+      try {
+        String line = reader.readLine();
+        if (line == null) {
+          System.out.println("line is null!");
+          stillRead = false;
+          continue;
+        }
+
+        line = line.trim();
+        System.out.println("line: " + line);
+        _collector.emit(new Values(line));
+
+      } catch (IOException ex) {
+        throw new RuntimeException(ex);
+      }
+    }
+
+    Utils.sleep(1000);
   }
 
   @Override
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    /* ----------------------TODO-----------------------
-    Task: define the declarer
-    ------------------------------------------------- */
-
-    // END
+    declarer.declare(new Fields("sentence"));
   }
 
   @Override
   public void close() {
-    /* ----------------------TODO-----------------------
-    Task: close the file
-    ------------------------------------------------- */
-
-    // END
-
+    if (reader != null) {
+      try {
+        System.out.println("close is called!");
+        reader.close();
+      } catch (Exception ex) {
+        throw new RuntimeException(ex);
+      }
+    }
   }
 
   public void fail(Object msgId) {}
