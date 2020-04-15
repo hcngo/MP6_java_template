@@ -33,6 +33,7 @@ config:
     topology.debug: false
     # Hint: you can set input file path here
     # make sure it's "/tmp/data.txt" in your final submission
+    input.file: "/tmp/data.txt"
 
 components:
   - id: "poolConfig"
@@ -44,6 +45,11 @@ components:
       - "uiuc_cs498_mp6"
       - 0
 
+  # Task: implement the redis store mapper
+  - id: "storeMapper"
+    className: "edu.illinois.storm.WordCountStoreMapper"
+    constructorArgs:
+    - "partBWordCount"
   # Hint: redis hash key for part B is "partBWordCount"
 
 # spout definitions
@@ -51,10 +57,59 @@ spouts:
   # Hint: the new file reading spout you need implement in this part is
   # src/main/java/edu/illinois/storm/FileReaderSpout.java
   # You need to pass file name here using <withInputFileProperties> function
+  - id: "file-reader-spout"
+    className: "edu.illinois.storm.FileReaderSpout"
+    parallelism: 1
+    configMethods:
+      - name: "withInputFileProperties"
+        args:
+          - "/tmp/data.txt"
 
 # bolt definitions
 bolts:
+  # Task: implement the split sentences bolt
+  # src/main/java/edu/illinois/storm/SplitSentenceBolt.java
+  - id: "split-sentence-bolt"
+    className: "edu.illinois.storm.SplitSentenceBolt"
+    parallelism: 1
+
+  # Task: implement the word count bolt
+  # src/main/java/edu/illinois/storm/WordCountBolt.java
+  - id: "word-count-bolt"
+    className: "edu.illinois.storm.WordCountBolt"
+    parallelism: 1
+
+  # Task: initialize RedisStoreBolt using poolConfig and storeMapper
+  # ClassName is "org.apache.storm.redis.bolt.RedisStoreBolt"
+  - id: "redis-store-bolt"
+    className: "org.apache.storm.redis.bolt.RedisStoreBolt"
+    parallelism: 1
+    constructorArgs:
+    - ref: "poolConfig"
+    - ref: "storeMapper"
 
 # stream definitions
 # stream definitions define connections between spouts and bolts.
 streams:
+# Task: pipe output of sentences generating spout to split bolt
+- name: "file-reader-spout --> split-sentence-bolt"
+  from: "file-reader-spout"
+  to: "split-sentence-bolt"
+  grouping:
+    type: SHUFFLE
+
+# Task: pipe output of split bolt to word count bolt
+# Hint: choose the right grouping type to make problem easier
+- name: "split-sentence-bolt --> word-count-bolt"
+  from: "split-sentence-bolt"
+  to: "word-count-bolt"
+  grouping:
+    type: FIELDS
+    args: ["word"]
+
+# Task: pipe output of word count bolt to redis store bolt
+- name: "word-count-bolt --> redis-store-bolt"
+  from: "word-count-bolt"
+  to: "redis-store-bolt"
+  grouping:
+    type: SHUFFLE
