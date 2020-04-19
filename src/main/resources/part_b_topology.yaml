@@ -91,25 +91,25 @@ bolts:
 # stream definitions
 # stream definitions define connections between spouts and bolts.
 streams:
-# Task: pipe output of sentences generating spout to split bolt
-- name: "file-reader-spout --> split-sentence-bolt"
-  from: "file-reader-spout"
-  to: "split-sentence-bolt"
-  grouping:
-    type: SHUFFLE
+  # Task: pipe output of sentences generating spout to split bolt
+  - name: "file-reader-spout --> split-sentence-bolt"
+    from: "file-reader-spout"
+    to: "split-sentence-bolt"
+    grouping:
+      type: SHUFFLE
 
-# Task: pipe output of split bolt to word count bolt
-# Hint: choose the right grouping type to make problem easier
-- name: "split-sentence-bolt --> word-count-bolt"
-  from: "split-sentence-bolt"
-  to: "word-count-bolt"
-  grouping:
-    type: FIELDS
-    args: ["word"]
+  # Task: pipe output of split bolt to word count bolt
+  # Hint: choose the right grouping type to make problem easier
+  - name: "split-sentence-bolt --> word-count-bolt"
+    from: "split-sentence-bolt"
+    to: "word-count-bolt"
+    grouping:
+      type: FIELDS
+      args: ["word"]
 
-# Task: pipe output of word count bolt to redis store bolt
-- name: "word-count-bolt --> redis-store-bolt"
-  from: "word-count-bolt"
-  to: "redis-store-bolt"
-  grouping:
-    type: SHUFFLE
+  # Task: pipe output of word count bolt to redis store bolt
+  - name: "word-count-bolt --> redis-store-bolt"
+    from: "word-count-bolt"
+    to: "redis-store-bolt"
+    grouping:
+      type: SHUFFLE

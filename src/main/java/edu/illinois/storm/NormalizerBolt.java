@@ -21,23 +21,16 @@ public class NormalizerBolt extends BaseBasicBolt {
   @Override
   public void execute(Tuple tuple, BasicOutputCollector collector) {
 
-    /* ----------------------TODO-----------------------
-    Task:
-     1. make the words all lower case
-     2. remove the common words
-    ------------------------------------------------- */
-
-    // END
+    String word = tuple.getStringByField("word");
+    word = word.toLowerCase();
+    if (!commonWords.contains(word)) {
+      collector.emit(new Values(word));
+    }
 
   }
 
   @Override
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    /* ----------------------TODO-----------------------
-    Task: define the declarer
-    ------------------------------------------------- */
-
-    // END
-
+    declarer.declare(new Fields("word"));
   }
 }
