@@ -35,34 +35,111 @@ config:
     # make sure it's "/tmp/data.txt" in your final submission
 
 components:
-  - id: "poolConfig"
-    className: "org.apache.storm.redis.common.config.JedisPoolConfig"
-    constructorArgs:
+    - id: "poolConfig"
+      className: "org.apache.storm.redis.common.config.JedisPoolConfig"
+      constructorArgs:
       - "localhost"
       - 6379
       - 2000
       - "uiuc_cs498_mp6"
       - 0
 
-  # TODO
-  # Task: implement the redis store mapper
-  # src/main/java/edu/illinois/storm/TopNStoreMapper.java
-  # redis hash key for part D is "partDTopN"
+    # TODO
+    # Task: implement the redis store mapper
+    # src/main/java/edu/illinois/storm/TopNStoreMapper.java
+    # redis hash key for part D is "partDTopN"
+    - id: "storeMapper"
+      className: "edu.illinois.storm.TopNStoreMapper"
+      constructorArgs:
+      - "partDTopN"
 
 # spout definitions
 spouts:
-  # Hint: the new file reading spout you need implement in this part is
-  # src/main/java/edu/illinois/storm/FileReaderSpout.java
-  # You need to pass file name here using <withInputFileProperties> function
+    # Hint: the new file reading spout you need implement in this part is
+    # src/main/java/edu/illinois/storm/FileReaderSpout.java
+    # You need to pass file name here using <withInputFileProperties> function
+    - id: "file-reader-spout"
+      className: "edu.illinois.storm.FileReaderSpout"
+      parallelism: 1
+      configMethods:
+      - name: "withInputFileProperties"
+        args:
+        - "/tmp/data.txt"
 
 # bolt definitions
 bolts:
-  # Hint: the new top N tracking bolt you need implement in this part is
-  # src/main/java/edu/illinois/storm/TopNFinderBolt.java
-  # You need to pass N to the bolt here using <withNProperties> function
-  # make sure it's 10 in your final submission
+    # Task: implement the split sentences bolt
+    # src/main/java/edu/illinois/storm/SplitSentenceBolt.java
+    - id: "split-sentence-bolt"
+      className: "edu.illinois.storm.SplitSentenceBolt"
+      parallelism: 1
 
+    # Task: implement the word count bolt
+    # src/main/java/edu/illinois/storm/WordCountBolt.java
+    - id: "word-count-bolt"
+      className: "edu.illinois.storm.WordCountBolt"
+      parallelism: 1
+
+    # Task: implement the word normalizer bolt
+    # src/main/java/edu/illinois/storm/NormalizerBolt.java
+    - id: "word-normalizer-bolt"
+      className: "edu.illinois.storm.NormalizerBolt"
+      parallelism: 1
+
+    - id: "topN-finder-bolt"
+      className: "edu.illinois.storm.TopNFinderBolt"
+      parallelism: 1
+      configMethods:
+      - name: "withNProperties"
+        args:
+        - 10
+
+    # Task: initialize RedisStoreBolt using poolConfig and storeMapper
+    # ClassName is "org.apache.storm.redis.bolt.RedisStoreBolt"
+    - id: "redis-store-bolt"
+      className: "org.apache.storm.redis.bolt.RedisStoreBolt"
+      parallelism: 1
+      constructorArgs:
+      - ref: "poolConfig"
+      - ref: "storeMapper"
 
 # stream definitions
 # stream definitions define connections between spouts and bolts.
 streams:
+    # Task: pipe output of sentences generating spout to split bolt
+    - name: "file-reader-spout --> split-sentence-bolt"
+      from: "file-reader-spout"
+      to: "split-sentence-bolt"
+      grouping:
+          type: SHUFFLE
+
+    # Task: pipe output of split bolt to word normalizer bolt
+    - name: "split-sentence-bolt --> word-normalizer-bolt"
+      from: "split-sentence-bolt"
+      to: "word-normalizer-bolt"
+      grouping:
+          type: SHUFFLE
+
+    # Task: pipe output of word-normalizer-bolt to word count bolt
+    # Hint: choose the right grouping type to make problem easier
+    - name: "word-normalizer-bolt --> word-count-bolt"
+      from: "word-normalizer-bolt"
+      to: "word-count-bolt"
+      grouping:
+          type: FIELDS
+          args: ["word"]
+
+    # Task: pipe output of word-count-bolt to topN-finder-bolt
+    # Hint: choose the right grouping type to make problem easier
+    - name: "word-count-bolt --> topN-finder-bolt"
+      from: "word-count-bolt"
+      to: "topN-finder-bolt"
+      grouping:
+          type: ALL
+
+    # Task: pipe output of word count bolt to redis store bolt
+    - name: "topN-finder-bolt --> redis-store-bolt"
+      from: "topN-finder-bolt"
+      to: "redis-store-bolt"
+      grouping:
+          type: SHUFFLE

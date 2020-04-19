@@ -1,8 +1,16 @@
 package edu.illinois.storm;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -15,7 +23,8 @@ import org.apache.storm.tuple.Values;
 public class TopNFinderBolt extends BaseRichBolt {
   private OutputCollector collector;
 
-  // Hint: Add necessary instance variables and inner classes if needed
+  NavigableMap<Long, Set<String>> words = new TreeMap<>();
+  int topN;
 
 
   @Override
@@ -24,12 +33,8 @@ public class TopNFinderBolt extends BaseRichBolt {
   }
 
   public TopNFinderBolt withNProperties(int N) {
-    /* ----------------------TODO-----------------------
-    Task: set N
-    ------------------------------------------------- */
-
-		// End
-		return this;
+    this.topN = N;
+    return this;
   }
 
   @Override
@@ -40,7 +45,32 @@ public class TopNFinderBolt extends BaseRichBolt {
 		      the algorithm we used when we developed the auto-grader is maintaining a N size min-heap
     ------------------------------------------------- */
 
-		// End
+    String word = tuple.getStringByField("word");
+    if (word.isEmpty()) {
+      return;
+    }
+    Long count = tuple.getLongByField("count");
+
+    if (!words.containsKey(count)) {
+      words.put(count, new TreeSet<>());
+    }
+
+    words.get(count).add(word);
+
+    List<String> topWords = new ArrayList<>();
+
+    for (Long c: words.descendingKeySet()) {
+      if (words.get(c).size() >= topN) {
+        topWords = words.get(c).stream().collect(Collectors.toList()).subList(0, topN);
+        break;
+      }
+    }
+
+    String output = String.join(", ", topWords);
+
+    System.out.println("top words String: " + output);
+
+    collector.emit(new Values(output));
   }
 
   @Override
@@ -52,7 +82,7 @@ public class TopNFinderBolt extends BaseRichBolt {
 					"hello, world, cs498" and "world, cs498, hello" are all correct
     ------------------------------------------------- */
 
-    // END
+    declarer.declare(new Fields("topWordsString"));
   }
 
 }
